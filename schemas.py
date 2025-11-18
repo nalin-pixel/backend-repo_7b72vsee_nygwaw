@@ -1,48 +1,107 @@
 """
-Database Schemas
+Database Schemas for E-commerce
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a collection in MongoDB.
+Class name lowercased = collection name (e.g., Product -> "product").
 """
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, List, Literal, Dict
+from datetime import datetime
 
-from pydantic import BaseModel, Field
-from typing import Optional
-
-# Example schemas (replace with your own):
+class Address(BaseModel):
+    label: str = Field(..., description="Home, Work, etc.")
+    line1: str
+    line2: Optional[str] = None
+    city: str
+    state: str
+    country: str
+    postal_code: str
+    phone: Optional[str] = None
+    is_default: bool = False
 
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    name: str
+    email: EmailStr
+    password_hash: Optional[str] = None
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
+    is_active: bool = True
+    is_admin: bool = False
+    token: Optional[str] = None
+    addresses: List[Address] = []
+
+class Category(BaseModel):
+    name: str
+    slug: str
+    icon: Optional[str] = None
+
+class ProductImage(BaseModel):
+    url: str
+    alt: Optional[str] = None
 
 class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    title: str
+    slug: str
+    description: Optional[str] = None
+    price: float = Field(..., ge=0)
+    sale_price: Optional[float] = Field(None, ge=0)
+    currency: str = "INR"
+    category: str
+    brand: Optional[str] = None
+    rating: float = 0.0
+    rating_count: int = 0
+    stock: int = 0
+    images: List[ProductImage] = []
+    specs: Dict[str, str] = {}
+    featured: bool = False
+    tags: List[str] = []
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Review(BaseModel):
+    product_id: str
+    user_id: str
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Coupon(BaseModel):
+    code: str
+    type: Literal["percent", "flat"]
+    value: float
+    min_order: float = 0
+    active: bool = True
+    expires_at: Optional[datetime] = None
+
+class Banner(BaseModel):
+    title: str
+    subtitle: Optional[str] = None
+    image_url: str
+    link: Optional[str] = None
+    active: bool = True
+
+class CartItem(BaseModel):
+    product_id: str
+    quantity: int = Field(1, ge=1)
+
+class Cart(BaseModel):
+    user_id: str
+    items: List[CartItem] = []
+
+class OrderItem(BaseModel):
+    product_id: str
+    title: str
+    price: float
+    quantity: int
+    image: Optional[str] = None
+
+class Order(BaseModel):
+    user_id: str
+    items: List[OrderItem]
+    amount: float
+    currency: str = "INR"
+    address: Address
+    status: Literal["pending", "paid", "shipped", "delivered", "cancelled"] = "pending"
+    payment_provider: Optional[str] = None
+    payment_order_id: Optional[str] = None
+    payment_id: Optional[str] = None
+    coupon: Optional[str] = None
+
+# The Flames database viewer will automatically read these from /schema
